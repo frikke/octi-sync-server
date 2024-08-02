@@ -1,4 +1,5 @@
 project_name: octi-sync-server
+version: 2
 
 gomod:
   # Proxy a module from proxy.golang.org, making the builds verifiable.
@@ -24,8 +25,8 @@ before:
     # You may remove this if you don't use go modules.
     - go mod tidy
     # you may remove this if you don't need go generate
-    - go install github.com/golang/mock/mockgen@v1.6.0
-    - go install github.com/deepmap/oapi-codegen/cmd/oapi-codegen@v1.11.0
+    - go install go.uber.org/mock/mockgen@v0.4.0
+    - go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@v2.3.0
     - go generate ./...
 builds:
   - env:
@@ -40,13 +41,17 @@ builds:
     ldflags:
       - "-s -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{.CommitDate}} -X main.builtBy=goreleaser"
 archives:
-  - replacements:
-      darwin: Darwin
-      linux: Linux
-      amd64: x86_64
+  - name_template: >-
+      {{- .ProjectName }}_
+      {{- .Version }}_
+      {{- title .Os }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if eq .Arch "386" }}i386
+      {{- else }}{{ .Arch }}{{ end }}
+      {{- if .Arm }}v{{ .Arm }}{{ end -}}
 dockers:
   - image_templates:
-      - "ghcr.io/jakob-moeller-cloud/{{.ProjectName}}:{{ .Version }}-amd64"
+      - "ghcr.io/jakobmoellerdev/{{.ProjectName}}:{{ .Version }}-amd64"
     use: buildx
     build_flag_templates:
       - "--builder={{ .Env.BUILDER }}"
@@ -57,7 +62,7 @@ dockers:
       - "--label=org.opencontainers.image.revision={{.FullCommit}}"
       - "--label=org.opencontainers.image.version={{.Version}}"
   - image_templates:
-      - "ghcr.io/jakob-moeller-cloud/{{.ProjectName}}:{{ .Version }}-arm64v8"
+      - "ghcr.io/jakobmoellerdev/{{.ProjectName}}:{{ .Version }}-arm64v8"
     use: buildx
     goarch: arm64
     build_flag_templates:
@@ -69,22 +74,22 @@ dockers:
       - "--label=org.opencontainers.image.revision={{.FullCommit}}"
       - "--label=org.opencontainers.image.version={{.Version}}"
 docker_manifests:
-  - name_template: "ghcr.io/jakob-moeller-cloud/{{.ProjectName}}:{{ .Version }}"
+  - name_template: "ghcr.io/jakobmoellerdev/{{.ProjectName}}:{{ .Version }}"
     image_templates:
-      - "ghcr.io/jakob-moeller-cloud/{{.ProjectName}}:{{ .Version }}-amd64"
-      - "ghcr.io/jakob-moeller-cloud/{{.ProjectName}}:{{ .Version }}-arm64v8"
-  - name_template: "ghcr.io/jakob-moeller-cloud/{{.ProjectName}}:latest"
+      - "ghcr.io/jakobmoellerdev/{{.ProjectName}}:{{ .Version }}-amd64"
+      - "ghcr.io/jakobmoellerdev/{{.ProjectName}}:{{ .Version }}-arm64v8"
+  - name_template: "ghcr.io/jakobmoellerdev/{{.ProjectName}}:latest"
     image_templates:
-      - "ghcr.io/jakob-moeller-cloud/{{.ProjectName}}:{{ .Version }}-amd64"
-      - "ghcr.io/jakob-moeller-cloud/{{.ProjectName}}:{{ .Version }}-arm64v8"
+      - "ghcr.io/jakobmoellerdev/{{.ProjectName}}:{{ .Version }}-amd64"
+      - "ghcr.io/jakobmoellerdev/{{.ProjectName}}:{{ .Version }}-arm64v8"
 signs:
   - cmd: cosign
     stdin: '{{ .Env.COSIGN_PASSWORD }}'
-    args: [ "sign-blob", "--key=env://COSIGN_PRIVATE_KEY", "--output-signature=${signature}", "${artifact}"]
+    args: [ "sign-blob", "--yes", "--key=env://COSIGN_PRIVATE_KEY", "--output-signature=${signature}", "${artifact}"]
     artifacts: checksum
 docker_signs:
   - artifacts: manifests
-    args: [ "sign", "--key=env://COSIGN_PRIVATE_KEY", "${artifact}" ]
+    args: [ "sign", "--yes", "--key=env://COSIGN_PRIVATE_KEY", "${artifact}" ]
     stdin: '{{ .Env.COSIGN_PASSWORD }}'
 checksum:
   name_template: 'checksums.txt'
@@ -113,7 +118,6 @@ release:
     ## Octi Sync Server Release {{ .Version }} ({{ .Date }})
 
     Welcome to the new release of the Sync Server!
-
 # modelines, feel free to remove those if you don't want/use them:
 # yaml-language-server: $schema=https://goreleaser.com/static/schema.json
 # vim: set ts=2 sw=2 tw=0 fo=cnqoj

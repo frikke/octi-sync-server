@@ -5,9 +5,10 @@ import (
 	"net/http"
 
 	"github.com/google/uuid"
-	"github.com/jakob-moeller-cloud/octi-sync-server/service"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+
+	"github.com/jakobmoellerdev/octi-sync-server/service"
 )
 
 // AccountKey is the cookie name for user credential in basic auth.
@@ -57,7 +58,7 @@ func AuthWithShare(accounts service.Accounts, devices service.Devices) echo.Midd
 
 				device, err := devices.GetDevice(ctx, account, service.DeviceID(deviceID))
 
-				if err == service.ErrDeviceNotFound {
+				if errors.Is(err, service.ErrDeviceNotFound) {
 					return false, echo.NewHTTPError(http.StatusForbidden).SetInternal(err)
 				}
 
